@@ -1,0 +1,116 @@
+$foreground: #333;
+
+body {
+	color: $foreground;
+	font-family: monospace;
+	font-size: 16px;
+	background-color: #fafafa;
+}
+
+.debugger {
+	display: flex;
+	flex-direction: row;
+}
+
+h2 {
+	font-size: 22px;
+	border-bottom: 1px solid $foreground;
+	margin-bottom: 2px;
+}
+
+.execution-pane {
+	margin: 10px;
+	width: 30%;
+	
+	table {
+		width: 100%;
+	}
+	
+	thead {
+		text-decoration: underline;
+	}
+	
+	.instruction {
+		font-family: monospace;
+		font-size: 16px;
+		
+		&.on {
+			background-color: lightblue;
+		}
+	}
+	
+	.breakpoint-mark {
+		width: 1.2rem;
+		height: 1.2rem;
+		margin: 10px;
+		background-color: gray;
+		
+		&.on {
+			background-color: red;
+		}
+	}
+}
+
+.registers-and-output-panes {
+	width: 20%;
+	margin: 10px;
+}
+
+.registers-pane {
+	width: 100%;
+	margin-bottom: 16px;
+	
+	table {
+		width: 100%;
+	}
+	
+	.register {
+		display: flex;
+		flex-direction: row;
+		font-family: monospace;
+		font-size: 16px;
+		margin-top: 2px;
+		
+		.name {
+			width: 50px;
+			text-align: right;
+			margin-right: 5px;
+		}
+		
+		.value {
+			border: 1px solid $foreground;
+			width: 80px;
+			
+			input {
+				background-color: #dedede;
+				width: 100%;
+			}
+		}
+	}
+}
+
+.output-pane {
+	textarea {
+		margin: 4px;
+		width: 98%;
+		height: 100%;
+		border: 1px solid $foreground;
+	}
+}
+
+.memory-pane {
+	margin: 10px;
+	width: 50%;
+	
+	table {
+		font-family: monospace;
+	}
+	
+	td {
+		text-align: right;
+	}
+	
+	.memory-cell {
+		padding-right: 10px;
+	}
+}

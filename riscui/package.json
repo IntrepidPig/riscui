@@ -15,11 +15,17 @@
     "autoprefixer": "10.4.14",
     "eslint": "8.40.0",
     "eslint-config-next": "13.4.2",
+    "immer": "^10.0.2",
     "next": "13.4.2",
     "postcss": "8.4.23",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "tailwindcss": "3.3.2",
-    "typescript": "5.0.4"
+    "typescript": "5.0.4",
+    "use-immer": "^0.9.0",
+    "riscui-wasm-lib": "file:../riscui-wasm-lib/pkg"
+  },
+  "devDependencies": {
+    "sass": "^1.62.1"
   }
 }

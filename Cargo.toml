@@ -1,0 +1,6 @@
+[workspace]
+members = [
+	"risclang",
+	"riscvm",
+	"riscui-wasm-lib",
+]

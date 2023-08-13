@@ -128,7 +128,7 @@ impl Instruction {
 			I => self.set_imm_by_pieces(&[(20, 0, 12)], imm),
 			S => self.set_imm_by_pieces(&[(7, 0, 5), (25, 5, 7)], imm),
 			B => self.set_imm_by_pieces(&[(7, 11, 1), (8, 1, 4), (25, 5, 6), (31, 12, 1)], imm),
-			U => self.set_imm_by_pieces(&[(12, 12, 20)], imm),
+			U => self.set_imm_by_pieces(&[(12, 0, 20)], imm),
 			J => self.set_imm_by_pieces(&[(12, 12, 8), (20, 11, 1), (21, 1, 10), (31, 20, 1)], imm),
 		}
 	}

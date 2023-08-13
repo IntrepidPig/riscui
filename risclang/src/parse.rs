@@ -113,9 +113,49 @@ fn parse_line(line: &str) -> Inst {
 		"ecall" => {
 			todo!()
 		},
+		"beqz" | "bnez" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rs1 = Some(parse_register(args[0]));
+			inst.imm = Some(parse_imm(args[1]));
+		},
+		"j" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.imm = Some(parse_imm(args[0]));
+		},
+		"jr" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rs1 = Some(parse_register(args[0]));
+		},
+		"la" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rd = Some(parse_register(args[0]));
+			inst.imm = Some(parse_imm(args[1]));
+		},
+		"li" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rd = Some(parse_register(args[0]));
+			inst.imm = Some(parse_imm(args[1]));
+		},
+		"mv" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rd = Some(parse_register(args[0]));
+			inst.rs1 = Some(parse_register(args[1]));
+		},
+		"neg" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rd = Some(parse_register(args[0]));
+			inst.rs1 = Some(parse_register(args[1]));
+		},
+		"nop" => {},
+		"not" => {
+			let args = rest.split_whitespace().collect::<Vec<_>>();
+			inst.rd = Some(parse_register(args[0]));
+			inst.rs1 = Some(parse_register(args[1]));
+		},
+		"ret" => {},
 		u => panic!("Unknown instruction {u}"),
 	}
-	dbg!(inst)
+	inst
 }
 
 fn parse_register(s: &str) -> u32 {

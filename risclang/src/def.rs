@@ -93,3 +93,17 @@ pub static REG_ALIASES: &[&'static str; 32] = &[
 	"t5",
 	"t6",
 ];
+
+pub static PSEUDO_INSTS: &[&'static str] = &[
+	"beqz",
+	"bnez",
+	"j",
+	"jr",
+	"la",
+	"li",
+	"mv",
+	"neg",
+	"nop",
+	"not",
+	"ret",
+];

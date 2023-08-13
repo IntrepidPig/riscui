@@ -2,8 +2,7 @@ use risclang::*;
 
 pub fn compile(text: &str) -> Vec<u8> {
 	let (parsed_insts, labels) = parse::parse(&text);
-	let code = compile::compile(parsed_insts, &labels);
-	println!("{:#?}", code);
+	let code = dbg!(compile::compile(parsed_insts, &labels));
 	let code = code.into_iter().map(|inst| inst.0.to_le_bytes()).flatten().collect::<Vec<_>>();
 	code
 }
@@ -188,6 +187,19 @@ fn test_machine_fib2() {
 	";
 	let code = compile(test);
 	machine.run(&code);
-	assert!(machine.regs[5] == 21);
+	assert!(machine.regs[5] == 89);
 }
 
+#[test]
+fn test_pseudo_insts() {
+	let mut machine = Machine::new(1024);
+	let test = "
+	li x1 3
+	li x2 2500
+	li x3 -10000
+	";
+	machine.run(&compile(test));
+	assert_eq!(machine.regs[1], 3);
+	assert_eq!(machine.regs[2], 2500);
+	assert_eq!(machine.regs[3], -10000);
+}

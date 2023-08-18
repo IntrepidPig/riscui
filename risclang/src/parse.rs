@@ -93,8 +93,13 @@ fn parse_line(line: &str) -> Inst {
 		},
 		"jal" => {
 			let args = rest.split_whitespace().collect::<Vec<_>>();
-			inst.rd = Some(parse_register(args[0]));
-			inst.imm = Some(parse_imm(args[1]));
+			if args.len() == 1 {
+				inst.rd = Some(1);
+				inst.imm = Some(parse_imm(args[0]));
+			} else {
+				inst.rd = Some(parse_register(args[0]));
+				inst.imm = Some(parse_imm(args[1]));
+			}
 		},
 		"jalr" => {
 			let args = rest.split_whitespace().collect::<Vec<_>>();

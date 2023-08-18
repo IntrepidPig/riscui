@@ -39,7 +39,9 @@ pub static ISET_DEFINITION: &[ISetElem] = &[
 	ISetElem(0b1100111, Some(0b000), None, "jalr", "I"),
 	ISetElem(0b0010111, None, None, "auipc", "I"),
 	ISetElem(0b0110111, None, None, "lui", "U"),
-	ISetElem(0b1110011, Some(0b000), None, "e", "I"),
+	ISetElem(0b1110011, Some(0b000), None, "ebreak", "I"),
+	ISetElem(0b1110011, Some(0b000), None, "ecall", "I"),
+	ISetElem(0b0110011, Some(0b000), Some(0b0000001), "mul", "R"),
 ];
 
 pub static INST_FORMAT_IMM_PIECES: &[(&'static str, (&[(u32, u32, u32)], bool))] = &[

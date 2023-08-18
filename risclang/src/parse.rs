@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use crate::compile;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Inst {
 	pub name: String,
@@ -15,10 +17,12 @@ pub enum Imm {
 	Label(String),
 }
 
-pub fn parse(input: &str) -> (Vec<Inst>, HashMap<String, u32>) {
-	let mut insts = Vec::new();
+pub fn parse(input: &str) -> (Vec<Inst>, Vec<String>, HashMap<String, u32>) {
+    let mut insts = Vec::new();
+    let mut texts = Vec::new();
 	let mut labels = HashMap::new();
 	for line in input.lines() {
+		let full_line = line;
 		let line = line.split('#').next().unwrap();
 		let line = line.trim();
 		if line.is_empty() {
@@ -28,13 +32,18 @@ pub fn parse(input: &str) -> (Vec<Inst>, HashMap<String, u32>) {
 			let label = line.split(':').next().unwrap().trim();
 			labels.insert(label.to_owned(), insts.len().try_into().unwrap());
 		} else {
-			insts.push(parse_line(line));
+			let inst = parse_line(line);
+			let cinsts = compile::expand_pseudo(&inst);
+			for inst in cinsts {
+				insts.push(inst);
+				texts.push(full_line.trim_start().to_owned());
+			}
 		}
 	}
-	(insts, labels)
+	(insts, texts, labels)
 }
 
-fn parse_line(line: &str) -> Inst {
+pub fn parse_line(line: &str) -> Inst {
 	let line = line.to_lowercase();
 	let line = line.replace(',', " ");
 	let name = line.split_whitespace().next().unwrap();
@@ -47,7 +56,7 @@ fn parse_line(line: &str) -> Inst {
 		imm: None,
 	};
 	match name {
-		"add" | "sub" | "and" | "or" | "xor" | "sll" | "srl" | "sra" | "slt" | "sltu" => {
+		"add" | "sub" | "and" | "or" | "xor" | "sll" | "srl" | "sra" | "slt" | "sltu" | "mul" => {
 			let args = rest.split_whitespace().collect::<Vec<_>>();
 			inst.rd = Some(parse_register(args[0]));
 			inst.rs1 = Some(parse_register(args[1]));
@@ -113,10 +122,10 @@ fn parse_line(line: &str) -> Inst {
 			inst.imm = Some(parse_imm(args[1]));
 		},
 		"ebreak" => {
-			todo!()
+			inst.imm = Some(Imm::Value(0));
 		},
 		"ecall" => {
-			todo!()
+			inst.imm = Some(Imm::Value(1));
 		},
 		"beqz" | "bnez" => {
 			let args = rest.split_whitespace().collect::<Vec<_>>();
@@ -173,30 +182,16 @@ fn parse_register(s: &str) -> u32 {
 		_ => {},
 	};
 	let class = s.chars().next().unwrap();
-	assert!(class == 'x' || class == 's' || class == 't' || class == 'a');
 	let num = s[1..].parse::<u32>().unwrap();
 	if class == 'x' {
 		return num;
 	}
-	if class == 't' {
-		if num <= 2 {
-			return num + 5;
-		}
-		if 3 <= num && num <= 6 {
-			return num - 3 + 28;
+	for (i, &reg) in crate::def::REG_ALIASES.iter().enumerate() {
+		if reg == s {
+			return i as u32;
 		}
 	}
-	if class == 's' {
-		if num <= 1 {
-			return num + 8;
-		}
-		if 2 <= num && num <= 11 {
-			return num - 2 + 18;
-		}
-	}
-	if class == 'a' {
-		return num + 10;
-	}
+	
 	panic!("invalid register {s}");
 }
 

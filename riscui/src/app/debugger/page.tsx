@@ -6,18 +6,63 @@ import { useImmerReducer } from 'use-immer'
 import { AfterWasmLoaded, useProvidedContext } from '@/lib/util.tsx';
 
 const SOURCE = `
-addi t0 x0 0
-addi t1 x0 1
-addi t5 x0 7
-start:
-add t2 t0 t1
-addi t0 t1 0
-addi t1 t2 0
-addi t5 t5 -1
-sw t0 0(x0)
-bge t5 x0 start
-addi t3 x0 -1
-sw t1 4(x0)
+main:
+	li a0 16
+	li a1 100
+	sw a1 0(a0)
+    # load the value of n into a0
+    li a0 2
+
+    # load the value of exp into a1
+    li a1 10
+
+    # call ex3
+    jal ex3
+
+    # prints the output of ex3
+    mv a1 a0
+    li a0 1
+    ecall # Print Result
+
+    # exits the program
+    li a0 17
+    li a1 0
+    ecall
+
+ex3:
+    # this function is a recursive pow function
+    # a0 contains the base
+    # a1 contains the power to raise to
+    # the return value should be the result of a0^a1
+    #     where ^ is the exponent operator, not XOR
+    addi sp sp -4
+    sw ra 0(sp)
+
+    # return 1 if a0 == 0
+    beq a1 x0 ex3_zero_case
+
+    # otherwise, return ex3(a0, a1-1) * a0
+    mv t0 a0      # save a0 in t0
+    addi a1 a1 -1 # decrement a1
+    
+    addi sp sp -4
+    sw t0 0(sp)
+    jal ex3       # call ex3(a0, a1-1)
+    lw t0 0(sp)
+    addi sp sp 4
+
+    mul a0 a0 t0  # multiply ex3(a0, a1-1) by t0
+                  # (which contains the value of a0)
+
+    j ex3_end
+
+ex3_zero_case:
+    li a0 1
+
+ex3_end:
+    lw ra 0(sp)
+    addi sp sp 4
+    ret
 `;
 
 export default function Debugger() {
@@ -80,8 +125,8 @@ function Execution() {
 	return (
 		<div className="execution-pane">
 			<h2>Execution</h2>
-			<InstructionList/>
 			<ExecutionControls/>
+			<InstructionList/>
 		</div>
 	)
 }
@@ -92,8 +137,9 @@ function InstructionList() {
 	let instructions = new Array();
 	for (let i = 0; i < execution.instructions.length; i++) {
 		let instruction = execution.instructions[i];
+		let text = execution.instructionTexts[i];
 		let hex = formatHexWord(instruction);
-		instructions.push(<Instruction key={i} text={instruction.toString()} hex={hex} active={execution.activeIndex == i} />);
+		instructions.push(<Instruction key={i} text={text} hex={hex} active={execution.activeIndex == i} />);
 	}
 	
 	return (
@@ -264,21 +310,30 @@ function getMemoryFormatted(view: ArrayBuffer, cellStride: number, format: Memor
 	return Array.from(arr).map(formatFunction);
 }
 
+function parseNumber(s: string): number | null {
+	const n = Number.parseInt(s);
+	if (Number.isNaN(n)) {
+		return null;
+	} else {
+		return n;
+	}
+}
+
 function MemoryPane() {
 	const [execution, dispatch] = useExecution();
+	
+	const [rawStart, setRawStart] = useState("0x00000000");
 	
 	const cellStride = 4;
 	const nColumns = 4;
 	const rowStride = cellStride * nColumns;
 	const nRows = 16;
-	const actualStart = Math.floor(execution.memory_view_start / rowStride);
-	let memViewBuf = execution.machine.get_memory_view(actualStart, nRows * nColumns * cellStride).buffer;
-	let values = getMemoryFormatted(memViewBuf, 4, MemoryFormat.Ascii);
+	let values = getMemoryFormatted(execution.memoryView, 4, MemoryFormat.Hex);
 	
 	let rows = new Array();
 	for (let i = 0; i < nRows; i++) {
 		let row = new Array();
-		let rowStartAddr = actualStart + i * nColumns * cellStride;
+		let rowStartAddr = execution.memoryViewStart + i * nColumns * cellStride;
 		row.push(<td key={-1}><span>{formatHexWord(rowStartAddr)}: </span></td>)
 		for (let j = 0; j < nColumns; j++) {
 			row.push(<td key={j}><span className="memory-cell">{values[i * nColumns + j]}</span></td>);
@@ -286,8 +341,19 @@ function MemoryPane() {
 		rows.push(<tr key={i}>{row}</tr>)
 	}
 	
+	function onInputChange(e: any) {
+		setRawStart(e.target.value);
+		let start = parseNumber(e.target.value);
+		if (start !== null) {
+			const actualStart = Math.min(start - (start % rowStride), 1024 * 1024);
+			const len = Math.min(nRows * nColumns * cellStride, 1024 * 1024 - actualStart);
+			dispatch({ action: 'updateMemoryView', start: actualStart, len: len });
+		}
+	}
+	
 	return <div className="memory-pane">
 		<h2>Memory</h2>
+		<input type="text" onChange={onInputChange} value={rawStart} />
 		<table>
 			<tbody>
 				{rows}

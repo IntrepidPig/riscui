@@ -1,8 +1,9 @@
 mod utils;
 
 use risclang::Instruction;
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
-use std::convert::TryFrom;
+use std::{convert::{TryFrom}};
 #[wasm_bindgen(module = "src/lib/shims")]
 extern {
     fn wasm_print(text: &str);
@@ -17,15 +18,30 @@ pub fn test() -> u32 {
     return 200;
 }
 
+#[derive(Serialize)]
+pub struct CodeItem {
+    code: u32,
+    text: String,
+}
+
 #[wasm_bindgen]
-pub fn compile(source: &str) -> Vec<u32> {
-    let (insts, labels) = risclang::parse::parse(source);
-    risclang::compile::compile(insts, &labels).into_iter().map(|x| x.0).collect()
+pub fn compile(source: &str) -> JsValue {
+    let (insts, texts, labels) = risclang::parse::parse(source);
+    let code = risclang::compile::compile(insts, &labels);
+    assert_eq!(code.len(), texts.len());
+    let items = (0..code.len()).map(|i| CodeItem { code: code[i].0, text: texts[i].clone() }).collect::<Vec<_>>();
+    serde_wasm_bindgen::to_value(&items).unwrap()
 }
 
 #[wasm_bindgen]
 pub struct Machine {
     inner: riscvm::Machine,
+}
+
+#[wasm_bindgen]
+pub struct ExecResult {
+    pub a0: i32,
+    pub a1: i32,
 }
 
 #[wasm_bindgen]
@@ -51,9 +67,8 @@ impl Machine {
         self.inner.mem[start..(start + len)].to_vec()
     }
     
-    pub fn exec(&mut self, inst: u32) -> bool {
+    pub fn exec(&mut self, inst: u32) -> Option<ExecResult> {
         print(format!("executing {}", inst));
-        self.inner.exec(Instruction(inst));
-        true
+        self.inner.exec(Instruction(inst)).map(|x| ExecResult { a0: x.0, a1: x.1 })
     }
 }

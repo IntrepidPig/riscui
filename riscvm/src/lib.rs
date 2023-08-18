@@ -1,7 +1,7 @@
 use risclang::*;
 
 pub fn compile(text: &str) -> Vec<u8> {
-	let (parsed_insts, labels) = parse::parse(&text);
+	let (parsed_insts, _texts, labels) = parse::parse(&text);
 	let code = dbg!(compile::compile(parsed_insts, &labels));
 	let code = code.into_iter().map(|inst| inst.0.to_le_bytes()).flatten().collect::<Vec<_>>();
 	code
@@ -15,11 +15,13 @@ pub struct Machine {
 
 impl Machine {
 	pub fn new(mem_size: usize) -> Self {
-		Self {
+		let mut this = Self {
 			regs: [0; 32],
 			mem: vec![0; mem_size],
 			pc: 0,
-		}
+		};
+		this.regs[2] = mem_size.try_into().unwrap();
+		this
 	}
 
 	pub fn run(&mut self, code: &[u8]) {
@@ -31,12 +33,13 @@ impl Machine {
 		}
 	}
 
-	pub fn exec(&mut self, inst: Instruction) {
+	pub fn exec(&mut self, inst: Instruction) -> Option<(i32, i32)> {
 		let rs1 = self.regs[inst.rs1() as usize];
 		let rs2 = self.regs[inst.rs2() as usize];
 		let rd = &mut self.regs[inst.rd() as usize];
 		let imm = inst.imm();
 		let mut pcmod = false;
+		let mut ret = None;
 		match inst.opcode() {
 			0b0110011 => match (inst.funct3(), inst.funct7()) {
 				(0b000, 0b0000000) => *rd = rs1 + rs2,
@@ -49,6 +52,7 @@ impl Machine {
 				(0b101, 0b0100000) => *rd = rs1 >> rs2,
 				(0b010, 0b0000000) => *rd = if rs1 < rs2 { 1 } else { 0 },
 				(0b011, 0b0000000) => *rd = if (rs1 as u32) < (rs2 as u32) { 1 } else { 0 },
+				(0b000, 0b0000001) => *rd = rs1 * rs2,
 				_ => panic!("invalid instruction"),
 			},
 			0b0010011 => match (inst.funct3(), inst.funct7()) {
@@ -120,18 +124,26 @@ impl Machine {
 			},
 			0b1110011 => match inst.funct3() {
 				0b000 => match imm {
-					0 => {} // ebreak,
-					1 => {} // ecall
+					0 => {
+						// ebreak
+					}
+					1 => {
+						// ecall
+						ret = Some((self.regs[10], self.regs[11]));
+					}
 					_ => panic!("invalid environment instruction immediate")
 				},
 				_ => panic!("invalid instruction"),
-			}
+			},
 			_ => panic!("invalid instruction"),
 		}
 		
+		self.regs[0] = 0;
 		if !pcmod {
 			self.pc += 4;
 		}
+		
+		ret
 	}
 	
 	pub fn dump_registers(&self) {
@@ -202,4 +214,66 @@ fn test_pseudo_insts() {
 	assert_eq!(machine.regs[1], 3);
 	assert_eq!(machine.regs[2], 2500);
 	assert_eq!(machine.regs[3], -10000);
+}
+
+#[test]
+fn kinda_complex() {
+	let mut machine = Machine::new(1048576);
+	let test = "
+main:
+    # load the value of n into a0
+    li a0 2
+
+    # load the value of exp into a1
+    li a1 10
+
+    # call ex3
+    jal ex3
+
+    # prints the output of ex3
+    mv a1 a0
+    li a0 1
+    ecall # Print Result
+
+    # exits the program
+    li a0 17
+    li a1 0
+    ecall
+
+ex3:
+    # this function is a recursive pow function
+    # a0 contains the base
+    # a1 contains the power to raise to
+    # the return value should be the result of a0^a1
+    #     where ^ is the exponent operator, not XOR
+    addi sp sp -4
+    sw ra 0(sp)
+
+    # return 1 if a0 == 0
+    beq a1 x0 ex3_zero_case
+
+    # otherwise, return ex3(a0, a1-1) * a0
+    mv t0 a0      # save a0 in t0
+    addi a1 a1 -1 # decrement a1
+    
+    addi sp sp -4
+    sw t0 0(sp)
+    jal ex3       # call ex3(a0, a1-1)
+    lw t0 0(sp)
+    addi sp sp 4
+
+    mul a0 a0 t0  # multiply ex3(a0, a1-1) by t0
+                  # (which contains the value of a0)
+
+    j ex3_end
+
+ex3_zero_case:
+    li a0 1
+
+ex3_end:
+    lw ra 0(sp)
+    addi sp sp 4
+    ret
+	";
+	machine.run(&compile(test));
 }
